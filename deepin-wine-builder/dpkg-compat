@@ -1,0 +1,226 @@
+#!/bin/sh
+# dpkg / dpkg-query 兼容层（仅在本程序的 PATH 里生效，不替换系统的 dpkg）
+#
+# deepin-wine-builder 和它管理的应用包，都用 Debian 的方式判断依赖是否齐全：
+#     dpkg -s deepin-wine10-stable
+#     dpkg-query -W -f='${Status}' deepin-wine-helper
+# Arch 上没有 dpkg，这些查询一律失败，于是所有应用都报「缺 deepin-wine10-stable」。
+#
+# 这里把「Debian 包名」映射到「Arch 包名」，用 pacman 的数据库如实回答；
+# 顺带用 bsdtar 实现 dpkg -x（解 deb），这样应用自带的离线 deb 也能解开。
+
+set -u
+
+_mapped() {
+    # Debian 包名 -> Arch 包名
+    case "$1" in
+        deepin-wine10-stable|deepin-wine11-stable|deepin-wine-staging|\
+        deepin-wine-extras|deepin-wine-logtool|deepin-wine-helper|deepin-wine-builder|\
+        deepin-wine6-stable|deepin-wine8-stable|deepin-wine-runtime|deepin-wine-diag)
+            printf '%s' "$1" ;;
+        # 上游 wine 依赖但 Arch 上不存在 / 由其它包提供的
+        libglx-mesa0|libgl1|libgl1-mesa-glx|libgl1-mesa-dri|libosmesa6|libglu1-mesa) printf 'mesa' ;;
+        libc6|libc-bin) printf 'glibc' ;;
+        libgcc1|libgcc-s1) printf 'gcc-libs' ;;
+        libstdc++6) printf 'gcc-libs' ;;
+        libqt6core6|libqt6gui6|libqt6widgets6|libqt6network6|libqt6dbus6|libqt6sql6|\
+        libqt6xml6|libqt6concurrent6|libqt6qml6|libqt6core5compat6|libqt6printsupport6)
+            printf 'qt6-base' ;;
+        libdtk6core) printf 'dtk6core' ;;
+        libdtk6gui) printf 'dtk6gui' ;;
+        libdtk6widget) printf 'dtk6widget' ;;
+        libdtk6log) printf 'dtk6log' ;;
+        libasound2) printf 'alsa-lib' ;;
+        libpulse0) printf 'libpulse' ;;
+        libdbus-1-3) printf 'dbus' ;;
+        libglib2.0-0) printf 'glib2' ;;
+        libgstreamer1.0-0) printf 'gstreamer' ;;
+        libgstreamer-plugins-base1.0-0) printf 'gst-plugins-base' ;;
+        libgphoto2-6|libgphoto2-port12) printf 'libgphoto2' ;;
+        libpcsclite1) printf 'pcsclite' ;;
+        libsane) printf 'sane' ;;
+        libusb-1.0-0) printf 'libusb' ;;
+        libudev1) printf 'systemd-libs' ;;
+        libpng16-16) printf 'libpng' ;;
+        libjpeg62-turbo) printf 'libjpeg-turbo' ;;
+        libgnutls30|libgnutls28) printf 'gnutls' ;;
+        libgssapi-krb5-2|libkrb5-3) printf 'krb5' ;;
+        libcups2) printf 'libcups' ;;
+        libfontconfig1) printf 'fontconfig' ;;
+        libfreetype6) printf 'freetype2' ;;
+        libodbc1) printf 'unixodbc' ;;
+        libsdl2-2.0-0) printf 'sdl2' ;;
+        libv4l-0) printf 'libv4l' ;;
+        ocl-icd-libopencl1|libopencl1) printf 'ocl-icd' ;;
+        libncurses6|libncurses5|libncurses) printf 'ncurses' ;;
+        libcap2-bin) printf 'libcap' ;;
+        libx11-6) printf 'libx11' ;;
+        libxext6) printf 'libxext' ;;
+        libxi6) printf 'libxi' ;;
+        libxrender1) printf 'libxrender' ;;
+        libxrandr2) printf 'libxrandr' ;;
+        libxfixes3) printf 'libxfixes' ;;
+        libxcursor1) printf 'libxcursor' ;;
+        libxcomposite1) printf 'libxcomposite' ;;
+        libxinerama1) printf 'libxinerama' ;;
+        libxxf86vm1) printf 'libxxf86vm' ;;
+        libxmu6) printf 'libxmu' ;;
+        x11-utils) printf 'xorg-xdpyinfo' ;;
+        fonts-noto-cjk) printf 'noto-fonts-cjk' ;;
+        fonts-wqy-microhei) printf 'wqy-microhei' ;;
+        python3-dbus) printf 'python-dbus' ;;
+        p7zip-full) printf 'p7zip' ;;
+        debhelper) printf 'debhelper' ;;
+        fakeroot) printf 'fakeroot' ;;
+        cabextract) printf 'cabextract' ;;
+        unrar) printf 'unrar' ;;
+        dpkg) printf 'dpkg' ;;
+        *) printf '' ;;
+    esac
+}
+
+_arch_pkg() {  # 已安装则输出对应的 arch 包名，否则返回 1
+    arch=$(_mapped "$1")
+    [ -n "$arch" ] || return 1
+    pacman -Qq "$arch" >/dev/null 2>&1 || return 1
+    printf '%s' "$arch"
+}
+
+# 上游 wine 的 Depends 里在 Arch 上没有对应实现、也不影响运行的两项，直接算已满足
+_synthetic() {
+    case "$1" in
+        libcapi20-3|deepin-elf-verify) return 0 ;;
+    esac
+    return 1
+}
+
+_status_block() {
+    deb=$1; arch=$2
+    ver=$(pacman -Q "$arch" 2>/dev/null | awk '{print $2}')
+    [ -n "${ver:-}" ] || ver=0
+    desc=$(pacman -Qi "$arch" 2>/dev/null | sed -n 's/^\(描述\|Description\) *: *//p' | head -1)
+    [ -n "${desc:-}" ] || desc="$arch"
+    cat <<EOF
+Package: $deb
+Status: install ok installed
+Priority: optional
+Section: misc
+Installed-Size: $(pacman -Qi "$arch" 2>/dev/null | sed -n 's/^\(安装后大小\|Installed Size\) *: *//p' | head -1 | tr -dc '0-9')
+Maintainer: FireGuo <fireguo@localhost>
+Architecture: amd64
+Multi-Arch: foreign
+Source: $arch
+Version: $ver
+Description: $desc
+ $desc (packaged for Arch Linux)
+EOF
+}
+
+_synthetic_block() {
+    cat <<EOF
+Package: $1
+Status: install ok installed
+Priority: optional
+Section: misc
+Installed-Size: 0
+Maintainer: FireGuo <fireguo@localhost>
+Architecture: amd64
+Multi-Arch: foreign
+Source: deepin-wine10-stable
+Version: 1.1.10-1
+Description: $1 (provided by deepin-wine10-stable on Arch Linux)
+ Provided by the deepin-wine10-stable package.
+EOF
+}
+
+# ---- 参数解析 --------------------------------------------------------------
+MODE=query
+FORMAT=''
+FILES=''
+DIR=''
+mode_set=''
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -s|--status) MODE=status ;;
+        -l|--list) MODE=list ;;
+        -L|--listfiles) MODE=listfiles ;;
+        -W|--show) MODE=show ;;
+        -x|--extract) MODE=extract ;;
+        --print-architecture) echo amd64; exit 0 ;;
+        --print-foreign-architectures) exit 0 ;;
+        -f|--showformat) shift; FORMAT=${1:-} ;;
+        -f*) FORMAT=${1#-f}; FORMAT=${FORMAT#=} ;;
+        --showformat=*) FORMAT=${1#--showformat=} ;;
+        -*) : ;;   # 其它开关忽略
+        *)
+            if [ "$MODE" = extract ]; then
+                if [ -z "$FILES" ]; then FILES=$1; else DIR=$1; fi
+            else
+                FILES="$FILES $1"
+            fi
+            ;;
+    esac
+    shift
+done
+
+[ -n "${FILES// /}" ] || { [ "$MODE" = list ] || { echo "dpkg-compat: 缺少包名" >&2; exit 2; }; }
+
+case "$MODE" in
+    extract)
+        # dpkg -x <deb> <dir>
+        [ -n "${FILES:-}" ] && [ -n "${DIR:-}" ] || { echo "dpkg-compat: 用法: dpkg -x <deb> <dir>" >&2; exit 2; }
+        command -v bsdtar >/dev/null 2>&1 || { echo "dpkg-compat: 需要 bsdtar" >&2; exit 1; }
+        mkdir -p "$DIR" || exit 1
+        tmp=$(mktemp -d) || exit 1
+        bsdtar -xf "$FILES" -C "$tmp" 2>/dev/null || { echo "dpkg-compat: 解不开 $FILES" >&2; rm -rf "$tmp"; exit 1; }
+        payload=$(find "$tmp" -maxdepth 1 -name 'data.tar.*' | head -1)
+        if [ -z "$payload" ]; then echo "dpkg-compat: $FILES 里没有 data.tar.*" >&2; rm -rf "$tmp"; exit 1; fi
+        bsdtar -xf "$payload" -C "$DIR" --no-same-owner || { rm -rf "$tmp"; exit 1; }
+        rm -rf "$tmp"; exit 0
+        ;;
+    list)
+        echo "Desired=Unknown/Install/Remove/Purge/Hold"
+        echo "| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend"
+        echo "|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)"
+        echo "||/ Name                Version    Architecture Description"
+        for p in deepin-wine10-stable deepin-wine11-stable deepin-wine-staging \
+                 deepin-wine-extras deepin-wine-logtool deepin-wine-helper deepin-wine-builder; do
+            if a=$(_arch_pkg "$p"); then
+                printf 'ii  %-19s %-10s amd64        %s\n' "$p" "$(pacman -Q "$a" | awk '{print $2}')" "$p"
+            fi
+        done
+        exit 0
+        ;;
+esac
+
+rc=0
+for p in $FILES; do
+    if a=$(_arch_pkg "$p"); then
+        case "$MODE" in
+            status) _status_block "$p" "$a" ;;
+            show)
+                if [ -n "$FORMAT" ]; then
+                    fmt=$FORMAT
+                    fmt=${fmt//\$\{Status\}/install ok installed}
+                    fmt=${fmt//\$\{Version\}/$(pacman -Q "$a" | awk '{print $2}')}
+                    fmt=${fmt//\$\{Package\}/$p}
+                    fmt=${fmt//\$\{Architecture\}/amd64}
+                    printf '%s' "$fmt"
+                else
+                    _status_block "$p" "$a"
+                fi ;;
+            listfiles)
+                pacman -Ql "$a" 2>/dev/null | awk '{print $2}' ;;
+        esac
+    elif _synthetic "$p"; then
+        _synthetic_block "$p"
+    else
+        msg="dpkg-query: package '$p' is not installed and no information is available"
+        case "$MODE" in
+            status|show) echo "$msg" >&2 ;;
+        esac
+        rc=1
+    fi
+done
+exit $rc

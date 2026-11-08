@@ -13,6 +13,7 @@ component `appstore`），也就是 Deepin 25 / UOS 25 官方的商店源。
 | `deepin-wine10-stable/` | `deepin-wine10-stable` | 10.14deepin14 | wine 10 运行时，builder 的硬依赖 |
 | `deepin-wine-builder/` | `deepin-wine-builder` | 4.0.2+v25-1 | 主程序（Qt6 + DTK6 图形界面） |
 | `deepin-wine-extras/` | `deepin-wine-extras` | 1.0.2 | DXVK / VKD3D 等附加组件 |
+| `deepin-wine-helper/` | `deepin-wine-helper` | 5.4.12+v25-1 | `/opt/deepinwine/tools/*`（run_v4.sh、sendkeys、startbottle.exe 等） |
 | `deepin-wine11-stable/` | `deepin-wine11-stable` | 11.0deepin4+v25 | wine 11 运行时（可选） |
 | `deepin-wine-staging/` | `deepin-wine-staging` | 11.0deepin10 | wine-staging 运行时（可选） |
 | `deepin-wine-logtool/` | `deepin-wine-logtool` | 1.0.4 | 配套日志采集 CLI（可选） |
@@ -102,6 +103,29 @@ sudo pacman -S deepin-qt6integration
 ```bash
 QT_QPA_PLATFORM=xcb deepin-wine-builder
 ```
+
+## 为什么还需要一个 dpkg 兼容层
+
+`deepin-wine-builder` 和它管理的应用包，判断依赖是否齐全走的是 Debian 那一套：
+
+```sh
+dpkg -s deepin-wine10-stable
+dpkg-query -W -f='${Status}' deepin-wine-helper
+```
+
+Arch 上没有 dpkg，这些查询一律失败，于是**即使 wine10 已经装好，应用也会报「缺
+deepin-wine10-stable」**（本程序启动时也会先探一下 `dpkg -s libglx-mesa0`）。
+
+`deepin-wine-builder` 里带了一个兼容层 `dpkg-compat`，装成
+`/usr/lib/deepin-wine-builder/compat-bin/{dpkg,dpkg-query}`，只在启动器的 `PATH` 里生效，
+不会影响系统里真正的 dpkg。它做的事：
+
+- 把 Debian 包名映射到 Arch 包名，用 `pacman` 的数据库如实回答是/否。
+  例如 `deepin-wine10-stable` → `deepin-wine10-stable`、`libglx-mesa0` → `mesa`、
+  `libqt6core6` → `qt6-base`、`libasound2` → `alsa-lib`。
+- 上游 wine 的 `Depends` 里在 Arch 上没有对应实现、也不影响运行的两项
+  （`libcapi20-3`、`deepin-elf-verify`）按已满足处理。
+- 用 `bsdtar` 实现 `dpkg -x <deb> <dir>`，这样应用自带的离线 deb 也能解开。
 
 ## 关于依赖
 

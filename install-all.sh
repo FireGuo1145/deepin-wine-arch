@@ -6,7 +6,7 @@
 # 的依赖可以由本地构建的包满足（不会去仓库里找）。
 #
 # 用法：
-#   ./install-all.sh            装 wine10 + extras + builder
+#   ./install-all.sh            装 wine10 + extras + helper + builder
 #   ./install-all.sh --all      连 wine11 / staging / logtool 一起装
 #   ./install-all.sh --build-only   只构建，不安装
 set -euo pipefail
@@ -27,7 +27,7 @@ for a in "$@"; do
     esac
 done
 
-PKGS=(deepin-wine10-stable deepin-wine-extras deepin-wine-builder)
+PKGS=(deepin-wine10-stable deepin-wine-extras deepin-wine-helper deepin-wine-builder)
 [[ $ALL -eq 1 ]] && PKGS+=(deepin-wine11-stable deepin-wine-staging deepin-wine-logtool)
 
 install_pkgs=()

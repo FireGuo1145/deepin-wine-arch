@@ -25,6 +25,10 @@ if mkdir -p "$_compat" 2>/dev/null; then
     done
 fi
 
+# deepin-wine-builder 和它管理的应用包都用 dpkg 判断依赖是否齐全，
+# Arch 上没有 dpkg，这里用 compat-bin 里的 dpkg/dpkg-query 兼容层（走 pacman 数据库）。
+export PATH="/usr/lib/deepin-wine-builder/compat-bin:$PATH"
+
 export QT_PLUGIN_PATH="/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
 
 exec /usr/lib/ld-linux-x86-64.so.2 \
