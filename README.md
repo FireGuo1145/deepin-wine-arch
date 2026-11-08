@@ -1,173 +1,129 @@
-# deepin-wine 的 Arch 打包仓库
+# deepin-wine —— Arch Linux 打包仓库
 
-把统信 UOS 应用商店里的 **deepin-wine-builder**（统信 Windows 应用兼容引擎，提供并替代
-`deepin-wine-runner`）以及它要用到的 **wine 运行时**，从 Debian 包重新打包成 pacman 能装的形式。
+把统信 UOS「Windows 应用兼容引擎」（`deepin-wine-builder`，即 `deepin-wine-runner` 的替代品）
+和它用到的整套 wine 运行时，从 UOS/Deepin 官方商店源的 Debian 包重新打包成 Arch 包。
 
-上游全部来自 `https://com-store-packages.uniontech.com/appstore-V25`（suite `crimson`，
-component `appstore`），也就是 Deepin 25 / UOS 25 官方的商店源。
-
-## 包一览
-
-| 目录 | 包 | 版本 | 说明 |
-| --- | --- | --- | --- |
-| `deepin-wine10-stable/` | `deepin-wine10-stable` | 10.14deepin14 | wine 10 运行时，builder 的硬依赖 |
-| `deepin-wine-builder/` | `deepin-wine-builder` | 4.0.2+v25-1 | 主程序（Qt6 + DTK6 图形界面） |
-| `deepin-wine-extras/` | `deepin-wine-extras` | 1.0.2 | DXVK / VKD3D 等附加组件 |
-| `deepin-wine-helper/` | `deepin-wine-helper` | 5.4.12+v25-1 | `/opt/deepinwine/tools/*`（run_v4.sh、sendkeys、startbottle.exe 等） |
-| `deepin-wine11-stable/` | `deepin-wine11-stable` | 11.0deepin4+v25 | wine 11 运行时（可选） |
-| `deepin-wine-staging/` | `deepin-wine-staging` | 11.0deepin10 | wine-staging 运行时（可选） |
-| `deepin-wine-logtool/` | `deepin-wine-logtool` | 1.0.4 | 配套日志采集 CLI（可选） |
-
-## 安装
-
-推荐直接用脚本：普通用户构建、`sudo` 只用于 `pacman`，且按依赖顺序「装好一个再装下一个」，
-这样 builder 对 `deepin-wine10-stable` 的依赖由本地构建的包装上，不会去仓库里找：
+**一个仓库，一条命令装全套：**
 
 ```bash
-git clone <本仓库地址> deepin-wine-arch && cd deepin-wine-arch
-./install-all.sh                 # 装 wine10 + extras + builder
-./install-all.sh --all           # 连 wine11 / staging / logtool 一起装
-./install-all.sh --build-only    # 只构建
+git clone <本仓库地址> deepin-wine && cd deepin-wine
+makepkg -si
 ```
 
-前提：装了 `base-devel` 和 `curl`（makepkg 要用）。仓库里缺的依赖（`dtk6core` / `dtk6gui` /
-`dtk6widget` / `dtk6log` 等）脚本会用 `makepkg -s` 自动补装。
+`makepkg -si` 会构建并安装下面 7 个包（`-s` 自动补装 `dtk6*`、`qt6-*` 等仓库依赖，
+`-i` 一次性把所有包交给 pacman 安装，包之间的依赖在同一个事务里满足）。
 
-手工装也行，按依赖顺序逐个来：
+## 包含的包
 
-```bash
-cd deepin-wine10-stable && makepkg -si && cd ..
-cd deepin-wine-extras    && makepkg -si && cd ..
-cd deepin-wine-builder   && makepkg -si && cd ..
-```
+| 包 | 上游版本 | 装了什么 |
+| --- | --- | --- |
+| `deepin-wine10-stable` | 10.14deepin14 | wine 10 运行时 → `/opt/deepin-wine10-stable` |
+| `deepin-wine11-stable` | 11.0deepin4+v25 | wine 11 运行时 |
+| `deepin-wine-staging` | 11.0deepin10 | wine-staging 运行时 |
+| `deepin-wine-extras` | 1.0.2 | DXVK / VKD3D 等附加组件 → `/opt/deepin/deepin-wine-builder/additions` |
+| `deepin-wine-helper` | 5.4.12+v25-1 | `/opt/deepinwine/tools/*`（run_v4.sh、sendkeys、startbottle.exe、gl-wine…） |
+| `deepin-wine-logtool` | 1.0.4 | 日志采集 CLI |
+| `deepin-wine-builder` | 4.0.2+v25-1 | 主程序（Qt6 + DTK6 图形界面） |
 
-卸载：`sudo pacman -Rns deepin-wine-builder deepin-wine-extras deepin-wine10-stable`
+`pkgver` 是本仓库的快照日期（`2026.11.08`）：makepkg 不允许 split package 各自设版本号，
+而这 7 个上游包版本互不相同，所以把各自的「上游版本」写在 `pkgdesc` 里，并在 `PKGBUILD`
+中用 `_deb10` / `_deb11` … 这些变量 + 逐包 SHA256 钉死来源。
 
 ## 下载说明
 
-商店 CDN 有防盗链，裸请求会 307 跳转到 `app-store-files.uniontech.com` 再返回 403
-（必须带 `Referer`）。所以每个 PKGBUILD 的 `prepare()` 里用 `curl` 带 UA + Referer 下载，
-再用写死的 SHA256 校验，没法交给 makepkg 内置下载器。
+商店 CDN 有防盗链，裸请求会 307 跳到 `app-store-files.uniontech.com` 再 403（必须带
+`Referer`），所以没法用 makepkg 内置下载器。`prepare()` 里用 `curl` 带 UA + Referer 下载，
+再用写死的 SHA256 校验。
 
-如果已经手工下好 deb，把它放到对应包目录里，`prepare()` 会直接复用并校验 SHA256。
+已经手工下好 deb 的，把文件放到仓库根目录即可跳过下载（文件名见 `PKGBUILD` 里的 `_deb*`）。
 
-## 打包时补的 Arch 兼容层
+- 上游源：`https://com-store-packages.uniontech.com/appstore-V25`（suite `crimson`，component `appstore`）
 
-上游二进制是按 UOS（Debian 系 + Qt 6.8）构建的，直接扔到 Arch 上有两处 ABI 不一致，都在
-`deepin-wine-builder` 包里补掉了：
+## 打包时补的 Arch 兼容层（都是踩过的坑）
 
-1. **Qt 6.8 → 6.12 符号缺口**：上游引用了 `QListView::eventFilter` /
-   `QListView::mousePressEvent` 两个导出符号，Arch 的 Qt 6.12 已把它们并进
-   `QAbstractItemView` 不再导出（否则报 `undefined symbol … version Qt_6`）。
-   `qt6-6.8-compat.cpp` 编译成 `libqt68compat.so`（符号版本节点 `Qt_6`），把这两个符号
-   转发到基类非虚实现。装在 `/usr/lib/deepin-wine-builder/`，用 `ld.so --preload` 注入，
-   只作用于本进程——不会污染 wine / dpkg / python 等子进程。
-2. **`libyaml-cpp.so.0.7`**：Arch 的 `yaml-cpp` 已是 0.9。上游只用到
-   `YAML::convert<bool>::decode` 一个符号，0.9 里也有；启动器在 `$XDG_RUNTIME_DIR` 下建一个
-   `libyaml-cpp.so.0.7` 兼容软链，随 Arch 的 yaml-cpp 版本自动跟随。
+1. **`QListView::eventFilter` / `mousePressEvent` 符号缺失**
+   上游二进制由 UOS 的 Qt 6.8 构建，引用了这两个导出符号；Arch 的 Qt 6.12 已把它们并进
+   `QAbstractItemView`，直接运行会报 `undefined symbol … version Qt_6`。
+   `qt6-6.8-compat.cpp` 编译成 `libqt68compat.so`（符号版本节点 `Qt_6`），转发到基类非虚实现，
+   装在 `/usr/lib/deepin-wine-builder/`，用 `ld.so --preload` 注入——只作用于本进程，
+   不会污染 wine / dpkg / python 等子进程。
 
-另外程序把资源路径写死成 `/opt/apps/deepin-wine-builder`，所以载荷必须装在 `/opt/apps`，
-`/usr/bin/deepin-wine-builder` 由裸软链换成了启动器脚本，DBus 激活文件也改成走启动器。
+2. **`libyaml-cpp.so.0.7` 这个 SONAME**
+   Arch 的 `yaml-cpp` 已是 0.9。上游只用到 `YAML::convert<bool>::decode` 一个符号，0.9 里也有；
+   启动器在 `$XDG_RUNTIME_DIR` 下建兼容软链，随 yaml-cpp 版本自动跟随。
 
-## 排错：启动即 Segfault (core dumped)
+3. **缺 `chameleon` 风格插件 → 启动即 Segmentation fault**
+   程序绘制代码里有 `qobject_cast<QProxyStyle *>(widget->style())->proxy()`，它假设风格是
+   DTK 的 `DStyle`。而 `chameleon` 风格插件由 `deepin-qt6integration` 提供，没装时
+   `QStyleFactory::create("chameleon")` 会静默退回 `QFusionStyle`，cast 得到 NULL，一画界面就崩。
+   所以 `deepin-wine-builder` 硬依赖 `deepin-qt6integration`（它还提供 DCI/DSVG 图标引擎）。
 
-**真实根因**（2026-11-08 查清）：缺 `deepin-qt6integration`。
+4. **依赖检查走 dpkg → 应用误报「缺 deepin-wine10-stable」**
+   builder 和它管理的应用包判断依赖用的是 `dpkg -s <pkg>` / `dpkg-query -W`。Arch 上没有 dpkg，
+   查询一律失败，于是即使 wine10 已装好也报缺。
+   包内自带 `dpkg-compat`，装成 `/usr/lib/deepin-wine-builder/compat-bin/{dpkg,dpkg-query}`，
+   只在启动器的 `PATH` 里生效（不碰系统真 dpkg）：
+   - Debian 包名 → Arch 包名映射，用 pacman 数据库如实回答（`libglx-mesa0`→`mesa`、
+     `libqt6core6`→`qt6-base`、`libasound2`→`alsa-lib`…）
+   - 上游虚依赖 `libcapi20-3`、`deepin-elf-verify` 按已满足处理
+   - 用 `bsdtar` 实现 `dpkg -x`，应用自带离线 deb 也能解开
 
-程序的绘制代码里有一句：
+5. **`/opt/apps/deepin-wine-builder` 是硬编码路径**，载荷必须装在这里（这也是 namcap 会报
+   `ELF files outside of a valid path ('opt/')` 的原因，无法避免）。`/usr/bin/deepin-wine-builder`
+   由裸软链换成了启动器脚本，DBus 激活也改成走启动器。
 
-```cpp
-auto *s = qobject_cast<QProxyStyle *>(widget->style());   // 结果可能为 NULL
-s->proxy();                                               // 空指针 → SIGSEGV at 0x8
-```
+## 依赖取舍
 
-它假设应用风格是 `QProxyStyle`。DTK 会用 `QApplication::setStyle("chameleon")` 设置自己的
-`DStyle`，而 **`chameleon` 这个 Qt 风格插件由 `deepin-qt6integration` 提供**——没装它时
-`QStyleFactory::create("chameleon")` 静默退回 `QFusionStyle`，cast 就是 NULL，一画界面就崩。
-
-（`offscreen` 平台不产生 paint 事件，所以看起来"正常"，容易误判成平台问题。）
-
-**修复**：本包已把 `deepin-qt6integration` 列为硬依赖。已装旧包的话手动补一下：
-
-```bash
-sudo pacman -S deepin-qt6integration
-```
-
-**顺带说明**：这个包还提供 `libdci.so` / `libdsvg.so` 图标引擎，Deepin 的 DCI 图标格式要靠它。
-
-另外，程序还依赖两个 Arch 的 Qt 6.12 不再导出的符号
-（`QListView::eventFilter` / `QListView::mousePressEvent`），用 `libqt68compat.so` 补上；
-这一条是"启动就报 undefined symbol"，与上面的崩溃不是一回事。
-
-**如果 Wayland 下仍有问题**，可以退回 XWayland 试试：
-
-```bash
-QT_QPA_PLATFORM=xcb deepin-wine-builder
-```
-
-## 为什么还需要一个 dpkg 兼容层
-
-`deepin-wine-builder` 和它管理的应用包，判断依赖是否齐全走的是 Debian 那一套：
-
-```sh
-dpkg -s deepin-wine10-stable
-dpkg-query -W -f='${Status}' deepin-wine-helper
-```
-
-Arch 上没有 dpkg，这些查询一律失败，于是**即使 wine10 已经装好，应用也会报「缺
-deepin-wine10-stable」**（本程序启动时也会先探一下 `dpkg -s libglx-mesa0`）。
-
-`deepin-wine-builder` 里带了一个兼容层 `dpkg-compat`，装成
-`/usr/lib/deepin-wine-builder/compat-bin/{dpkg,dpkg-query}`，只在启动器的 `PATH` 里生效，
-不会影响系统里真正的 dpkg。它做的事：
-
-- 把 Debian 包名映射到 Arch 包名，用 `pacman` 的数据库如实回答是/否。
-  例如 `deepin-wine10-stable` → `deepin-wine10-stable`、`libglx-mesa0` → `mesa`、
-  `libqt6core6` → `qt6-base`、`libasound2` → `alsa-lib`。
-- 上游 wine 的 `Depends` 里在 Arch 上没有对应实现、也不影响运行的两项
-  （`libcapi20-3`、`deepin-elf-verify`）按已满足处理。
-- 用 `bsdtar` 实现 `dpkg -x <deb> <dir>`，这样应用自带的离线 deb 也能解开。
-
-## 关于依赖
-
-- **wine 本体只硬依赖 glibc。** 图形/声音/设备相关的库（libasound、libgphoto2、libpcsclite、
-  libsane、gstreamer、vulkan…）都是运行时 `dlopen`，所以在上游 deb 里是 `Depends` 的东西，
-  这里按 `optdepends` 处理：缺哪个只是对应功能不可用，不会启动失败。
-- **不需要 multilib。** 上游 wine 是纯 amd64 构建 + wow64 模拟，包内 `i386-windows` 里只有
-  PE 文件，全是 64 位 ELF，因此不用装 `lib32-*`。
-- 上游 `Depends: deepin-elf-verify`，但这个包在 Deepin 25 的源里根本不存在、官方的
-  Deepin 25 虚拟机里也没装，wine 照样正常工作——所以这里没有打包它。
-- 界面的「生成 .deb 安装包」功能需要 `dpkg` 和 `debhelper`，这两个在 AUR，归入 `optdepends`。
+- **wine 本体只硬依赖 glibc。** 图形/声音/设备库（libasound、libgphoto2、libpcsclite、libsane、
+  gstreamer、vulkan…）都是运行时 `dlopen`，所以在上游 deb 里是 `Depends` 的东西这里按
+  `optdepends` 处理：缺哪个只是对应功能不可用，不会启动失败。
+- **不需要 multilib。** 上游 wine 是纯 amd64 + wow64 构建，包内 `i386-windows` 里全是 PE 文件，
+  没有任何 32 位 ELF。
+- 上游 `Depends: deepin-elf-verify` 是虚的：该包在 Deepin 25 源里根本不存在、官方虚拟机也没装，
+  wine 照样正常，所以没打包。
+- 「生成 .deb 安装包」功能需要 `dpkg` 和 `debhelper`（都在 AUR），归入 `optdepends`。
 
 ## 验证情况
 
-在 Arch（2026-11 快照，Qt 6.12 / dtk6 6.7.52，无 multilib）上，用构建产物的**真实安装布局**
-（解包后按 `/opt`、`/usr/bin`、`/usr/lib` 叠加运行）验证：
+在 Arch（2026-11 快照，Qt 6.12 / dtk6 6.7.52，无 multilib）上：
 
+- 仓库根目录一条 `makepkg` 出全部 7 个包，`namcap` 仅剩 `/opt` 路径那条提示
 - `deepin-wine10-stable --version` → `wine-10.14`
-- `wineboot -u` 成功建出 prefix：`drive_c` 22 MB、`system32` 588 个 dll
-- `wine cmd /c "echo WINE_EXEC_OK"` → 正常输出，说明 PE 执行链路通
-- `deepin-wine-builder` 能完成初始化、注册 D-Bus 服务 `com.deepin.DeepinWineBuilder` 并稳定
-  进入事件循环；`makepkg` 全部 6 个包构建通过，`namcap` 仅剩
-  `ELF files outside of a valid path ('opt/')`（`/opt/apps` 是程序硬编码路径，无法避免）
+- `wineboot -u` 建出 prefix：`drive_c` 22 MB、`system32` 588 个 dll
+- `wine cmd /c "echo WINE_EXEC_OK"` 正常输出，PE 执行链路通
+- `deepin-wine-builder` 能初始化、注册 D-Bus `com.deepin.DeepinWineBuilder` 并稳定进入事件循环；
+  启动时会 `dpkg -s libglx-mesa0`，兼容层回答「已安装」
+- 包内 `dpkg-compat`：`dpkg -s deepin-wine10-stable` / `libglx-mesa0` 返回已安装，
+  未打包的包如实返回未安装
 
-**没有验证**的：真实桌面窗口显示（构建环境无显示器/会话总线）、通过界面装一个真实的
-Windows 安装包、DXVK 在具体显卡上的表现。这些要在你自己的机器上过一遍。
+**没验证**的：真实桌面窗口的观感、通过界面装一个真实的 Windows 安装包、DXVK 在具体显卡上的
+表现、以及应用级依赖检查（需要在界面上点开某个应用才会触发）。这些要在你自己的机器上过一遍。
 
-## 已知限制
+## 排错
 
-- 包内的 `bin/batch_converter`、`bin/deps_search` 依赖 `deepin.runner.*` / `bottles.*`
-  这些 UOS 侧 Python 模块，Arch 上没有，批量转换类功能不可用。
-- `deepin-wine-runtime`（带 exagear 的 i386 运行时，218 MB）和 `deepin-wine-helper`
-  没有打包，builder 的主要流程用不到它们。
-- 上游是专有软件，见各包目录下的 `LICENSE`。本仓库只做再打包，不提供担保。
-- 只在 x86_64 上验证。
-
-## 升级某个包
-
-改对应目录 PKGBUILD 里的 `pkgver` / `_debname` / `_debsha256`，然后：
+启动即 `Segmentation fault (core dumped)`：
 
 ```bash
-cd <包目录> && makepkg --printsrcinfo > .SRCINFO
+# 1) 确认 deepin-qt6integration 装了（缺 chameleon 插件必崩）
+pacman -Q deepin-qt6integration
+
+# 2) 抓栈
+gdb -q -batch -ex run -ex "bt 15" --args \
+  /usr/lib/ld-linux-x86-64.so.2 --preload /usr/lib/deepin-wine-builder/libqt68compat.so \
+  /opt/apps/deepin-wine-builder/files/bin/deepin-wine-builder
+
+# 3) 程序日志
+tail -50 ~/.cache/deepin/deepin-wine-builder/deepin-wine-builder.log
 ```
 
-`_deburl` 是用包名和 `_debname` 拼的，一般不用动。
+Wayland 下如果仍有异常，可退回 XWayland 试试：`QT_QPA_PLATFORM=xcb deepin-wine-builder`。
+
+## 升级某个组件
+
+1. 改 `PKGBUILD` 里对应组件的 `_deb*`（文件名）和 `_sha*`（SHA256）；
+2. 把 `pkgver` 更新为新的快照日期（例如 `2026.12.01`）；
+3. `makepkg --printsrcinfo > .SRCINFO`。
+
+## 版权
+
+上游是统信软件的专有软件，见 `LICENSE`。本仓库只做再打包与兼容层，不提供任何担保。

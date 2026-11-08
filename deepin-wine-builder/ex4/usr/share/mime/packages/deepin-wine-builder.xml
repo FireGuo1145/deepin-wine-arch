@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-        <mime-type type="application/dwb">
-                <comment>deepin wine bottle files</comment>
-                <generic-icon name="deepin-wine-builder"/>
-                <glob pattern="*.dwb" weight="80"/>
-        </mime-type>
-</mime-info>

@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=com.deepin.DeepinWineBuilder
-Exec=/usr/bin/deepin-wine-builder --service
