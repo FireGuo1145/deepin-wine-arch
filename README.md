@@ -68,6 +68,31 @@ cd deepin-wine-builder   && makepkg -si && cd ..
 另外程序把资源路径写死成 `/opt/apps/deepin-wine-builder`，所以载荷必须装在 `/opt/apps`，
 `/usr/bin/deepin-wine-builder` 由裸软链换成了启动器脚本，DBus 激活文件也改成走启动器。
 
+## 排错：Wayland 会话下启动即段错误
+
+**症状**：`deepin-wine-builder` 一启动就 `Segmentation fault (core dumped)`，不打印任何东西。
+
+**根因**：Arch 的 `dtk6`（6.7.52）里的 `DGuiApplicationHelper::testAttribute` 只能在 X11 系 QPA
+平台上工作。Wayland 会话里 Qt 默认选 `wayland` 平台插件，于是 `DApplication` 在构造阶段就崩。
+与本程序无关——一个只写 `Dtk::Widget::DApplication app(argc, argv);` 的空白程序同样崩：
+
+```
+#0 Dtk::Gui::DGuiApplicationHelper::testAttribute(...)   libdtk6gui.so.6
+#1 Dtk::Widget::DApplicationPrivate::DApplicationPrivate(...)  libdtk6widget.so.6
+#2 Dtk::Widget::DApplication::DApplication(int&, char**)  libdtk6widget.so.6
+```
+
+实测：`QT_QPA_PLATFORM=offscreen` 不崩（没有原生窗口），`minimal` / `wayland` 崩，`xcb` / `dxcb` 正常。
+
+**已修**：启动器 `deepin-wine-builder.sh` 会在未显式指定 `QT_QPA_PLATFORM` 且 `DISPLAY` 存在时
+固定用 `xcb`（走 XWayland）。放在 `2026-11-08` 之后的包里。
+
+临时绕过（旧包或别的 DTK 程序）：
+
+```bash
+QT_QPA_PLATFORM=xcb deepin-wine-builder
+```
+
 ## 关于依赖
 
 - **wine 本体只硬依赖 glibc。** 图形/声音/设备相关的库（libasound、libgphoto2、libpcsclite、

@@ -25,6 +25,15 @@ if mkdir -p "$_compat" 2>/dev/null; then
     done
 fi
 
+# DTK6 的 DGuiApplicationHelper::testAttribute 只能在 X11 系 QPA 平台上工作：
+# 在 Wayland 会话里 Qt 会默认选 wayland 平台插件，随后 DApplication 构造时直接
+# SIGSEGV（连一个只构造 DApplication 的空白程序都会崩，与本程序无关）。
+# 只要有 DISPLAY（X11 或 XWayland）就固定走 xcb；用户自己指定了就不动。
+if [ -z "${QT_QPA_PLATFORM:-}" ] && [ -n "${DISPLAY:-}" ]; then
+    QT_QPA_PLATFORM=xcb
+    export QT_QPA_PLATFORM
+fi
+
 export QT_PLUGIN_PATH="/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
 
 exec /usr/lib/ld-linux-x86-64.so.2 \
