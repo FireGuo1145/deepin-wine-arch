@@ -1,0 +1,9 @@
+post_install() {
+    cat <<'EOF'
+==> 默认打开方式需要按用户自己设置（root 不能替用户决定），可选执行：
+      xdg-mime default deepin-wine-builder.desktop application/x-ms-dos-executable
+      xdg-mime default deepin-wine-builder.desktop application/x-msi
+      xdg-mime default deepin-wine-builder.desktop application/x-wine-extension-msp
+==> 实际运行 Windows 程序还需要 deepin-wine 运行时，见 README 的「已知限制」。
+EOF
+}
