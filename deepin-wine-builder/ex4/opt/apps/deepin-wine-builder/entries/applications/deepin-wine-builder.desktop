@@ -1,0 +1,13 @@
+#!/usr/bin/env xdg-open
+
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Categories=System;Utility;
+Icon=deepin-wine-builder
+StartupWMClass=deepin-wine-builder
+Exec=deepin-wine-builder %f
+Name=UOS Windows Application Compatibility Engine
+Name[zh_CN]=统信Windows应用兼容引擎
+Comment=Run Windows software with deepin-wine Linux
+MimeType=x-scheme-handler/deepinwine;application/dwb;application/x-ms-dos-executable;application/x-msi;application/x-wine-extension-msp;text/x-msdos-batch;

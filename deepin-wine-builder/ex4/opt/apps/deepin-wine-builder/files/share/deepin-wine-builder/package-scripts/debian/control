@@ -1,0 +1,16 @@
+Source: @deb_package_name@
+Section: non-free/otherosfs
+Priority: optional
+Maintainer: @deb_packager@
+Build-Depends: debhelper (>= 3.0), fakeroot
+Standards-Version: 3.7.3.0
+
+Package: @deb_package_name@
+Depends: @package_depends@
+Replaces: @old_package@
+Provides: @old_package@
+Conflicts: @old_package@
+Architecture: @host_arch@
+Multi-Arch: foreign
+Description: @deb_package_name@ is a wine app packaged via deepin-wine-builder
+  @app_description@

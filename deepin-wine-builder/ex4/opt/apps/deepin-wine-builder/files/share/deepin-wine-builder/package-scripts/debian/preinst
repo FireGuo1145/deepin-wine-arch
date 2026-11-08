@@ -1,0 +1,34 @@
+#!/bin/sh
+
+doremove()
+{
+    echo "do install script"
+    if [ -d "/opt/apps/@deb_package_name@/files/dlls" ];then
+        rm -rf "/opt/apps/@deb_package_name@/files/dlls"
+        echo "/opt/apps/@deb_package_name@/files/dlls"
+    fi
+}
+
+case $1 in
+    "install")
+        if [ ! -z "$2" ]; then
+            echo "try to install from version $2"
+        else
+            echo "normal install"
+        fi
+        doremove
+        ;;
+    "upgrade")
+        echo "upgrade from version $2"
+        doremove
+        ;;
+    "abort-upgrade")
+        echo "Old: abort upgrade to version $2"
+        ;;
+    *)
+esac
+
+# Make sure the script returns 0
+true
+
+#DEBHELPER#

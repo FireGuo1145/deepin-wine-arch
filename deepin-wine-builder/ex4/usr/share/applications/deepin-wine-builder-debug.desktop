@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Categories=System;Utility;
+Icon=deepin-wine-builder
+StartupWMClass=deepin-wine-builder
+Exec=deepin-wine-builder --debug %f
+Name=UOS Windows Application Compatibility Engine (Debug)
+Name[zh_CN]=统信Windows应用兼容引擎（调试）
+Comment=Run Windows software with deepin-wine Linux, with debug logging
+Comment[zh_CN]=以调试日志模式运行 Windows 软件
+MimeType=application/x-ms-dos-executable;application/x-msi;application/x-wine-extension-msp;text/x-msdos-batch;
+NotShowIn=GNOME;KDE;Unity;

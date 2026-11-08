@@ -1,0 +1,49 @@
+#!/bin/bash
+
+rootdir=$(dirname $0)
+rootdir=$(realpath $rootdir)
+
+if [ ! -f "$rootdir/bin/wine" ];then
+    winename=$(basename $0)
+    rootdir="/opt/$winename"
+
+    if [ ! -f "$rootdir/bin/wine" ];then
+        echo "not found wine"
+        exit
+    fi
+fi
+
+wine=$rootdir/bin/wine
+
+if test -z "$WINEPREFIX"; then
+    if test "$wine" = "$wine64"; then
+        wineprefix=$HOME/.wine64
+    else
+        wineprefix=$HOME/.wine
+    fi
+else
+    wineprefix=$WINEPREFIX
+fi
+
+if test -z "$WINELOADER"; then
+    wineloader=$wine
+else
+    wineloader=$WINELOADER
+fi
+
+if test -z "$WINEDEBUG"; then
+    winedebug=-all
+else
+    winedebug=$WINEDEBUG
+fi
+
+export LD_LIBRARY_PATH="/opt/$name/lib:/opt/$name/lib64:$LD_LIBRARY_PATH"
+export WINEDLLPATH=/opt/$name/lib:/opt/$name/lib64
+
+# ARM 需要指定模拟器参数
+if [ -f "/opt/deepinemu/tools/init_emu.sh" ];then
+    source "/opt/deepinemu/tools/init_emu.sh"
+fi
+
+WINEPREFIX=$wineprefix WINELOADER=$wineloader WINEDEBUG=$winedebug $EMU_CMD $EMU_ARGS $wine "$@"
+

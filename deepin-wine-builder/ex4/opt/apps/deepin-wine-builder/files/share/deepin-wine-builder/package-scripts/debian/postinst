@@ -1,0 +1,49 @@
+#!/bin/sh
+
+ACTIVEX_NAME="@activex_name@"
+
+doinstall()
+{
+    echo "do install script"
+    if [ -f "/opt/apps/@deb_package_name@/files/install.sh" ];then
+        /opt/apps/@deb_package_name@/files/install.sh -i
+    fi
+
+    if [ -n "$ACTIVEX_NAME" ]; then
+        if [ ! -d "/usr/lib/mozilla/plugins" ];then
+            mkdir -p /usr/lib/mozilla/plugins
+        fi
+        cp /usr/lib/pipelight/libpipelight.so "/usr/lib/mozilla/plugins/libpipelight-${ACTIVEX_NAME}.so"
+        glib-compile-schemas /usr/share/glib-2.0/schemas/
+    fi
+}
+
+case $1 in
+    "configure")
+        echo "most recently configured version $2"
+        doinstall
+        ;;
+    "abort-upgrade")
+        echo "Old: abort upgrade to $2"
+        ;;
+    "abort-remove")
+        if [ "#$2" == "#in-favour" ]; then
+            echo "Conflictor: try to install package $3 version $4"
+        else
+            echo "abort-remove"
+        fi
+        ;;
+    "abort-deconfigure")
+        # $2 == "in-favour"
+        echo "Conflictor: failed install package:$3 version $4"
+        if [ "#$5" == "removing" ]; then
+            echo "Deconfigured: removing conflicting package $6 version $7"
+        fi
+        ;;
+    *)
+        echo "unkown action"
+        ;;
+esac
+
+# Make sure the script returns 0
+true

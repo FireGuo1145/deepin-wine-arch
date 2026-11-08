@@ -68,26 +68,36 @@ cd deepin-wine-builder   && makepkg -si && cd ..
 另外程序把资源路径写死成 `/opt/apps/deepin-wine-builder`，所以载荷必须装在 `/opt/apps`，
 `/usr/bin/deepin-wine-builder` 由裸软链换成了启动器脚本，DBus 激活文件也改成走启动器。
 
-## 排错：Wayland 会话下启动即段错误
+## 排错：启动即 Segfault (core dumped)
 
-**症状**：`deepin-wine-builder` 一启动就 `Segmentation fault (core dumped)`，不打印任何东西。
+**真实根因**（2026-11-08 查清）：缺 `deepin-qt6integration`。
 
-**根因**：Arch 的 `dtk6`（6.7.52）里的 `DGuiApplicationHelper::testAttribute` 只能在 X11 系 QPA
-平台上工作。Wayland 会话里 Qt 默认选 `wayland` 平台插件，于是 `DApplication` 在构造阶段就崩。
-与本程序无关——一个只写 `Dtk::Widget::DApplication app(argc, argv);` 的空白程序同样崩：
+程序的绘制代码里有一句：
 
-```
-#0 Dtk::Gui::DGuiApplicationHelper::testAttribute(...)   libdtk6gui.so.6
-#1 Dtk::Widget::DApplicationPrivate::DApplicationPrivate(...)  libdtk6widget.so.6
-#2 Dtk::Widget::DApplication::DApplication(int&, char**)  libdtk6widget.so.6
+```cpp
+auto *s = qobject_cast<QProxyStyle *>(widget->style());   // 结果可能为 NULL
+s->proxy();                                               // 空指针 → SIGSEGV at 0x8
 ```
 
-实测：`QT_QPA_PLATFORM=offscreen` 不崩（没有原生窗口），`minimal` / `wayland` 崩，`xcb` / `dxcb` 正常。
+它假设应用风格是 `QProxyStyle`。DTK 会用 `QApplication::setStyle("chameleon")` 设置自己的
+`DStyle`，而 **`chameleon` 这个 Qt 风格插件由 `deepin-qt6integration` 提供**——没装它时
+`QStyleFactory::create("chameleon")` 静默退回 `QFusionStyle`，cast 就是 NULL，一画界面就崩。
 
-**已修**：启动器 `deepin-wine-builder.sh` 会在未显式指定 `QT_QPA_PLATFORM` 且 `DISPLAY` 存在时
-固定用 `xcb`（走 XWayland）。放在 `2026-11-08` 之后的包里。
+（`offscreen` 平台不产生 paint 事件，所以看起来"正常"，容易误判成平台问题。）
 
-临时绕过（旧包或别的 DTK 程序）：
+**修复**：本包已把 `deepin-qt6integration` 列为硬依赖。已装旧包的话手动补一下：
+
+```bash
+sudo pacman -S deepin-qt6integration
+```
+
+**顺带说明**：这个包还提供 `libdci.so` / `libdsvg.so` 图标引擎，Deepin 的 DCI 图标格式要靠它。
+
+另外，程序还依赖两个 Arch 的 Qt 6.12 不再导出的符号
+（`QListView::eventFilter` / `QListView::mousePressEvent`），用 `libqt68compat.so` 补上；
+这一条是"启动就报 undefined symbol"，与上面的崩溃不是一回事。
+
+**如果 Wayland 下仍有问题**，可以退回 XWayland 试试：
 
 ```bash
 QT_QPA_PLATFORM=xcb deepin-wine-builder

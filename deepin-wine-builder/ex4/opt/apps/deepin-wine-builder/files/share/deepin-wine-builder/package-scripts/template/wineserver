@@ -1,0 +1,13 @@
+#!/bin/bash
+
+runtime_path=/opt/deepinwine/runtime-i386
+bin_dir=$(realpath $(dirname $0))
+
+if [ -f "$runtime_path/init_runtime.sh" ];then
+    source "$runtime_path/init_runtime.sh"
+
+    init_runtime
+fi
+
+export WINEBINDIR="$bin_dir"
+$WINELDPATH ${bin_dir}/wineserver.real -p0 "$@"

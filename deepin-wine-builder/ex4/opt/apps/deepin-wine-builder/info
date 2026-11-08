@@ -1,0 +1,20 @@
+{
+    "appid": "deepin-wine-builder",
+    "name": "UOS Windows Application Compatibility Engine",
+    "version": "4.0.2",
+    "arch": [
+        "amd64",
+        "arm64"
+    ],
+    "permissions": {
+        "autostart": false,
+        "notification": false,
+        "trayicon": true,
+        "clipboard": true,
+        "account": false,
+        "bluetooth": false,
+        "camera": true,
+        "audio_record": true,
+        "installed_apps": false
+    }
+}

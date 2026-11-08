@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512px" height="512px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>缺省</title>
+    <defs>
+        <filter x="-8.1%" y="-6.2%" width="116.1%" height="116.1%" filterUnits="objectBoundingBox" id="filter-1">
+            <feOffset dx="0" dy="8" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="10" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.2 0" type="matrix" in="shadowBlurOuter1" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="98.1385523%" id="linearGradient-2">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#EDEDED" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="缺省" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="编组" transform="translate(45, 45)" filter="url(#filter-1)">
+            <path d="M56,0 L366,1.42108547e-14 C396.927946,8.52948321e-15 422,25.072054 422,56 L422,366 C422,396.927946 396.927946,422 366,422 L56,422 C25.072054,422 3.00774561e-14,396.927946 2.13162821e-14,366 L1.42108547e-14,56 C1.04232737e-14,25.072054 25.072054,2.51038631e-14 56,2.13162821e-14 Z" id="矩形" fill="url(#linearGradient-2)"></path>
+            <g id="编组-2" transform="translate(225.0077, 195.0076) scale(-1, 1) translate(-225.0077, -195.0076)translate(99, 69.0152)" fill-rule="nonzero">
+                <rect id="矩形" fill="#00AFFF" x="154.14394" y="31.9848085" width="97.8714818" height="96" rx="16"></rect>
+                <rect id="矩形" fill="#FF3900" x="154.14394" y="155.984809" width="97.8714818" height="96" rx="16"></rect>
+                <rect id="矩形" fill="#3CC700" x="28.3091775" y="155.984809" width="97.8714818" height="96" rx="16"></rect>
+                <path d="M72.0858328,19.217108 L127.167434,51.0662263 C134.810214,55.4854122 137.429283,65.25991 133.020032,72.9084273 L101.946755,126.809765 C97.5334497,134.465316 87.7497088,137.093676 80.0941579,132.680371 C80.0881535,132.676909 80.0821514,132.673444 80.0761515,132.669975 L24.9945507,100.820856 C17.3517698,96.4016703 14.7327016,86.6271725 19.141952,78.9786553 L50.2152294,25.0773171 C54.6285346,17.4217662 64.4122755,14.7934068 72.0678264,19.206712 C72.0738307,19.2101734 72.0798329,19.2136388 72.0858328,19.217108 Z" id="矩形" fill="#FFD500" transform="translate(76.081, 75.9435) rotate(11) translate(-76.081, -75.9435)"></path>
+            </g>
+        </g>
+    </g>
+</svg>

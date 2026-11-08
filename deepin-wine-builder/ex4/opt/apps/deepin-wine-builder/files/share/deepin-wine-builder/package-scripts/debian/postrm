@@ -1,0 +1,53 @@
+#!/bin/bash
+
+ACTIVEX_NAME="@activex_name@"
+BOTTLE_NAME="@public_bottle_name@"
+
+doremove()
+{
+    echo "do remove script"
+    if [ -n "$ACTIVEX_NAME" ]; then
+        rm "/usr/lib/mozilla/plugins/libpipelight-${ACTIVEX_NAME}.so"
+        glib-compile-schemas /usr/share/glib-2.0/schemas/
+    fi
+}
+
+case $1 in
+    "remove")
+        if [ "#$2" = "in-favour" ]; then
+            echo "Conflictor: install $3 version $4 to remove me"
+        else
+            echo "normal remove me"
+        fi
+        doremove
+        ;;
+    "purge")
+        echo "purge"
+        doremove
+        ;;
+    "upgrade")
+        echo "Old: upgrade to $2"
+        ;;
+    "abort-upgrade")
+        echo "abort to upgrade to $2"
+        ;;
+    "failed-upgrade")
+        echo "failed upgrade from version $2"
+        ;;
+    "abort-install")
+        if [ ! -z "$2" ]; then
+            echo "abort install form version $3"
+        else
+            echo "abort-install"
+        fi
+        ;;
+    "disappear")
+        echo "Disappearer: overwirte by $3 version $4"
+        ;;
+    *)
+        echo "unkown action"
+        ;;
+esac
+
+# Make sure the script returns 0
+true
