@@ -3,8 +3,10 @@ pkg/
 *.pkg.tar.zst
 *.pkg.tar.zst.sig
 *.deb
-ex/
-testhome/
+ex*/
+testhome*/
+.e2e/
+.dbg/
 *.log
 elflist.txt
 allneeded.txt
