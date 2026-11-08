@@ -2,7 +2,7 @@ src/
 pkg/
 *.pkg.tar.zst
 *.pkg.tar.zst.sig
-deepin-wine-builder_*.deb
+*.deb
 ex/
 testhome/
 *.log

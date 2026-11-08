@@ -1,0 +1,65 @@
+# Maintainer: FireGuo <fireguo@localhost>
+#
+# builder 会在 /opt/deepin/deepin-wine-builder/{additions,offline-deps,redirect}
+# 下找这些附加组件（DXVK、VKD3D 的 dll/msi 与脚本）。
+#
+# 上游只发 Debian 包：这里的做法是把官方 .deb 的载荷原样装到程序期望的路径下
+# （/opt/deepin/deepin-wine-builder），再补上 Arch 侧的元数据。
+# wine 本体只硬依赖 glibc，其余图形/声音/设备库都是运行时 dlopen，
+# 所以按 optdepends 处理：缺哪个只是对应功能不可用，不会启动失败。
+
+pkgname=deepin-wine-extras
+pkgver=1.0.2
+pkgrel=1
+pkgdesc='deepin-wine-builder 的附加组件（DXVK / VKD3D 等）'
+arch=('any')
+url='https://www.uniontech.com/'
+license=('LicenseRef-proprietary-UOS')
+depends=('glibc')
+optdepends=(
+  'vulkan-icd-loader: DXVK / VKD3D 运行需要 Vulkan 加载器'
+  'vulkan-radeon: AMD 显卡的 Vulkan 驱动'
+  'vulkan-intel: Intel 显卡的 Vulkan 驱动'
+  'nvidia-utils: NVIDIA 显卡的 Vulkan 驱动'
+)
+# 不 strip：上游 ELF 带 elfsign 校验和，改动会破坏 wine 自带工具的行为
+options=('!strip')
+makedepends=('curl')
+
+_debname='deepin-wine-extras_1.0.2_all.deb'
+_debsha256='47794cd2df8ea9ce8dc2ddb4e06b4117e5b7bdda1b24a667d3844338882985ee'
+_deburl="https://com-store-packages.uniontech.com/appstore-V25/pool/appstore/d/${pkgname}/${_debname}"
+
+source=('LICENSE')
+sha256sums=('f4ece7e8de81418341f6e27c097954066766eeb01f985f8f12e52caa0d807062')
+
+prepare() {
+  cd "$srcdir"
+  # 商店 CDN 有防盗链（缺 Referer 会 403），不能用 makepkg 内置下载器。
+  # 若已手工下好 deb，放到本目录即可跳过下载。
+  if [[ ! -f $_debname ]]; then
+    if [[ -f $startdir/$_debname ]]; then
+      cp "$startdir/$_debname" .
+    else
+      msg2 "从 UOS 商店下载 $_debname"
+      curl -fL --retry 3 --connect-timeout 20 \
+           -A 'Mozilla/5.0 (X11; Linux x86_64)' \
+           -e 'https://com-store-packages.uniontech.com/' \
+           -o "$_debname" "$_deburl"
+    fi
+  fi
+  echo "$_debsha256  $_debname" | sha256sum -c -
+}
+
+build() {
+  cd "$srcdir"
+  bsdtar -xf "$_debname" data.tar.xz
+}
+
+package() {
+  cd "$srcdir"
+  install -d "$pkgdir"
+  bsdtar -xf data.tar.xz -C "$pkgdir" --no-same-owner --no-xattrs
+  rm -rf "$pkgdir/usr/share/doc" "$pkgdir/usr/share/lintian"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

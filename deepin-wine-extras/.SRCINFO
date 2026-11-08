@@ -1,0 +1,18 @@
+pkgbase = deepin-wine-extras
+	pkgdesc = deepin-wine-builder 的附加组件（DXVK / VKD3D 等）
+	pkgver = 1.0.2
+	pkgrel = 1
+	url = https://www.uniontech.com/
+	arch = any
+	license = LicenseRef-proprietary-UOS
+	makedepends = curl
+	depends = glibc
+	optdepends = vulkan-icd-loader: DXVK / VKD3D 运行需要 Vulkan 加载器
+	optdepends = vulkan-radeon: AMD 显卡的 Vulkan 驱动
+	optdepends = vulkan-intel: Intel 显卡的 Vulkan 驱动
+	optdepends = nvidia-utils: NVIDIA 显卡的 Vulkan 驱动
+	options = !strip
+	source = LICENSE
+	sha256sums = f4ece7e8de81418341f6e27c097954066766eeb01f985f8f12e52caa0d807062
+
+pkgname = deepin-wine-extras

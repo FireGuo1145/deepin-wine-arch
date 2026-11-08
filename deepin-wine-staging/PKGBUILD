@@ -1,0 +1,88 @@
+# Maintainer: FireGuo <fireguo@localhost>
+#
+# wine-staging 运行时，builder 里可选用（上游列为 Recommends）。
+#
+# 上游只发 Debian 包：这里的做法是把官方 .deb 的载荷原样装到程序期望的路径下
+# （/opt/deepin-wine-staging + /usr/bin/deepin-wine-staging），再补上 Arch 侧的元数据。
+# wine 本体只硬依赖 glibc，其余图形/声音/设备库都是运行时 dlopen，
+# 所以按 optdepends 处理：缺哪个只是对应功能不可用，不会启动失败。
+
+pkgname=deepin-wine-staging
+pkgver=11.0deepin10
+pkgrel=1
+pkgdesc='deepin-wine staging 运行时（UOS amd64 构建，纯 wow64，无需 multilib）'
+arch=('x86_64')
+url='https://www.uniontech.com/'
+license=('LicenseRef-proprietary-UOS')
+depends=('glibc')
+optdepends=(
+  'alsa-lib: 声音输出（运行时 dlopen，缺了只是没声音）'
+  'libpulse: PulseAudio 后端'
+  'libgstreamer: 媒体播放'
+  'gst-plugins-base: 媒体播放'
+  'libgphoto2: 数码相机透传'
+  'pcsclite: 智能卡'
+  'sane: 扫描仪'
+  'libusb: USB 设备透传'
+  'ocl-icd: OpenCL'
+  'libcups: 打印'
+  'fontconfig: 字体渲染'
+  'freetype2: 字体渲染'
+  'libpng: 图像'
+  'libjpeg-turbo: 图像'
+  'gnutls: 网络加密'
+  'krb5: 域认证'
+  'vulkan-icd-loader: DXVK / VKD3D 需要'
+  'sdl2: 游戏手柄等'
+  'libv4l: 摄像头'
+  'libxcomposite: 窗口合成（dlopen）'
+  'libxcursor: 鼠标指针（dlopen）'
+  'libxfixes: X11 扩展（dlopen）'
+  'libxi: 输入设备（dlopen）'
+  'libxinerama: 多显示器（dlopen）'
+  'libxrandr: 分辨率（dlopen）'
+  'libxrender: 渲染（dlopen）'
+  'libxxf86vm: 显示模式（dlopen）'
+  'libxext: X11 扩展（dlopen）'
+)
+# 不 strip：上游 ELF 带 elfsign 校验和，改动会破坏 wine 自带工具的行为
+options=('!strip')
+makedepends=('curl')
+
+_debname='deepin-wine-staging_11.0deepin10_amd64.deb'
+_debsha256='fb81b0c5d72de5dc1fe42413f530a762514535381ba29b79d2adc478de4dd38a'
+_deburl="https://com-store-packages.uniontech.com/appstore-V25/pool/appstore/d/${pkgname}/${_debname}"
+
+source=('LICENSE')
+sha256sums=('f4ece7e8de81418341f6e27c097954066766eeb01f985f8f12e52caa0d807062')
+
+prepare() {
+  cd "$srcdir"
+  # 商店 CDN 有防盗链（缺 Referer 会 403），不能用 makepkg 内置下载器。
+  # 若已手工下好 deb，放到本目录即可跳过下载。
+  if [[ ! -f $_debname ]]; then
+    if [[ -f $startdir/$_debname ]]; then
+      cp "$startdir/$_debname" .
+    else
+      msg2 "从 UOS 商店下载 $_debname"
+      curl -fL --retry 3 --connect-timeout 20 \
+           -A 'Mozilla/5.0 (X11; Linux x86_64)' \
+           -e 'https://com-store-packages.uniontech.com/' \
+           -o "$_debname" "$_deburl"
+    fi
+  fi
+  echo "$_debsha256  $_debname" | sha256sum -c -
+}
+
+build() {
+  cd "$srcdir"
+  bsdtar -xf "$_debname" data.tar.xz
+}
+
+package() {
+  cd "$srcdir"
+  install -d "$pkgdir"
+  bsdtar -xf data.tar.xz -C "$pkgdir" --no-same-owner --no-xattrs
+  rm -rf "$pkgdir/usr/share/doc" "$pkgdir/usr/share/lintian"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
