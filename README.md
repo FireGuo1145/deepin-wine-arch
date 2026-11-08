@@ -19,13 +19,18 @@ component `appstore`），也就是 Deepin 25 / UOS 25 官方的商店源。
 
 ## 安装
 
-推荐直接用脚本（先 `makepkg` 构建，再 `pacman -U` 安装；不需要 root 跑 makepkg）：
+推荐直接用脚本：普通用户构建、`sudo` 只用于 `pacman`，且按依赖顺序「装好一个再装下一个」，
+这样 builder 对 `deepin-wine10-stable` 的依赖由本地构建的包装上，不会去仓库里找：
 
 ```bash
 git clone <本仓库地址> deepin-wine-arch && cd deepin-wine-arch
-./install-all.sh            # 装 wine10 + extras + builder
-./install-all.sh --all      # 连 wine11 / staging / logtool 一起装
+./install-all.sh                 # 装 wine10 + extras + builder
+./install-all.sh --all           # 连 wine11 / staging / logtool 一起装
+./install-all.sh --build-only    # 只构建
 ```
+
+前提：装了 `base-devel` 和 `curl`（makepkg 要用）。仓库里缺的依赖（`dtk6core` / `dtk6gui` /
+`dtk6widget` / `dtk6log` 等）脚本会用 `makepkg -s` 自动补装。
 
 手工装也行，按依赖顺序逐个来：
 
